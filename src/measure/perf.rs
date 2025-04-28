@@ -41,23 +41,39 @@ pub(crate) struct Perf {
 
 impl Perf {
     pub fn new(cpu: usize) -> anyhow::Result<Self> {
-        let mut group = perf_event::Group::builder().one_cpu(cpu).build_group()?;
+        let mut group = perf_event::Group::builder()
+            .one_cpu(cpu)
+            .build_group()
+            .context("Perf build group")?;
         let mut counters = Vec::new();
 
         let mut builder = Builder::new(Software::DUMMY);
         builder.one_cpu(cpu);
 
-        counters.push(group.add(builder.event(Hardware::CPU_CYCLES))?);
-        counters.push(group.add(builder.event(Hardware::INSTRUCTIONS))?);
+        counters.push(
+            group
+                .add(builder.event(Hardware::CPU_CYCLES))
+                .context("Perf add cycles")?,
+        );
+        counters.push(
+            group
+                .add(builder.event(Hardware::INSTRUCTIONS))
+                .context("Perf add instructions")?,
+        );
 
         for which in [CacheId::L1D, CacheId::LL] {
             for operation in [CacheOp::READ, CacheOp::WRITE] {
                 for result in [CacheResult::MISS, CacheResult::ACCESS] {
-                    counters.push(group.add(builder.event(Cache {
+                    let cache = Cache {
                         which,
                         operation,
                         result,
-                    }))?);
+                    };
+                    counters.push(
+                        group
+                            .add(builder.event(cache.clone()))
+                            .with_context(|| anyhow!("Perf add cache: {:?}", cache))?,
+                    );
                 }
             }
         }
@@ -66,14 +82,14 @@ impl Perf {
     }
 
     pub fn start(&mut self) -> anyhow::Result<()> {
-        self.group.enable()?;
+        self.group.enable().context("Perf event enable")?;
         Ok(())
     }
 
     pub fn stop(&mut self) -> anyhow::Result<Report> {
-        self.group.disable()?;
+        self.group.disable().context("Perf event disable")?;
 
-        let data = self.group.read()?;
+        let data = self.group.read().context("Perf event read")?;
 
         let scale =
             data.time_enabled().unwrap().as_secs_f64() / data.time_running().unwrap().as_secs_f64();
