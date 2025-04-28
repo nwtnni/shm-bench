@@ -38,27 +38,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "allocator-bench"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "arrow-array",
- "bon",
- "core_affinity",
- "crossbeam-channel",
- "hdrhistogram",
- "libc",
- "log",
- "parquet",
- "rand",
- "rapidhash",
- "serde",
- "serde_json",
- "shm",
- "ycsb",
-]
-
-[[package]]
 name = "android-tzdata"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -981,6 +960,27 @@ dependencies = [
  "libc",
  "log",
  "serde",
+]
+
+[[package]]
+name = "shm-bench"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "arrow-array",
+ "bon",
+ "core_affinity",
+ "crossbeam-channel",
+ "hdrhistogram",
+ "libc",
+ "log",
+ "parquet",
+ "rand",
+ "rapidhash",
+ "serde",
+ "serde_json",
+ "shm",
+ "ycsb",
 ]
 
 [[package]]

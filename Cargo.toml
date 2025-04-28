@@ -1,5 +1,5 @@
 [package]
-name = "allocator-bench"
+name = "shm-bench"
 version = "0.1.0"
 edition = "2024"
 
