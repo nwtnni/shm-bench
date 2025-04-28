@@ -31,7 +31,7 @@ pub struct OutputWorker {
 }
 
 impl<B: Backend> benchmark::Benchmark<B> for Mstress {
-    const NAME: &str = "/ms";
+    const NAME: &str = "mstress";
     type StateGlobal = ();
     type StateProcess = ();
     type StateCoordinator = ();

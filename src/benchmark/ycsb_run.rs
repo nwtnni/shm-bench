@@ -45,7 +45,7 @@ pub struct Worker {
 }
 
 impl<B: Backend, I: Index<B::Allocator>> benchmark::Benchmark<B> for index::Capture<Config, I> {
-    const NAME: &str = "/ycsb-run";
+    const NAME: &str = "ycsb-run";
     type StateGlobal = Global<I>;
     type StateProcess = ();
     type StateCoordinator = ();

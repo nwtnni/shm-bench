@@ -39,7 +39,7 @@ pub struct Worker<A: Allocator> {
 }
 
 impl<B: Backend> benchmark::Benchmark<B> for ThreadTest {
-    const NAME: &str = "/tt";
+    const NAME: &str = "thread-test";
     type StateGlobal = ();
     type StateProcess = ();
     type StateCoordinator = ();

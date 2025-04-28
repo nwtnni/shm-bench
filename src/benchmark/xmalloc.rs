@@ -96,7 +96,7 @@ pub struct Worker {
 unsafe impl Sync for Global {}
 
 impl<B: Backend> benchmark::Benchmark<B> for Xmalloc {
-    const NAME: &str = "/xm";
+    const NAME: &str = "xmalloc";
     type StateGlobal = Global;
     type StateProcess = ();
     type StateCoordinator = ();

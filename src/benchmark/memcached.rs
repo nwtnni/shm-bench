@@ -61,7 +61,7 @@ pub struct OutputWorker {
 }
 
 impl<B: Backend, I: Index<B::Allocator>> benchmark::Benchmark<B> for index::Capture<Config, I> {
-    const NAME: &str = "/mc";
+    const NAME: &str = "memcached";
     type StateGlobal = Global<I>;
     type StateProcess = ();
     type StateCoordinator = ();
