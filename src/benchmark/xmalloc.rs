@@ -116,13 +116,6 @@ impl<B: Backend> benchmark::Benchmark<B> for Xmalloc {
             config.thread_count
         );
 
-        assert!(
-            self.operation_count % (config.thread_count >> 1) as u64 == 0,
-            "Operation count ({}) must be evenly divisible by thread count ({}) / 2",
-            self.operation_count,
-            config.thread_count
-        );
-
         let create = config.is_leader();
 
         let root = Shm::<Root>::builder()

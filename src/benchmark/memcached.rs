@@ -75,14 +75,6 @@ impl<B: Backend, I: Index<B::Allocator>> benchmark::Benchmark<B> for index::Capt
         config: &config::Process,
         allocator: &allocator::Config<B::Config>,
     ) -> Self::StateGlobal {
-        assert_eq!(
-            self.operation_count % config.thread_count as u64,
-            0,
-            "Operation count ({}) must be evenly divisible by thread count ({})",
-            self.operation_count,
-            config.thread_count
-        );
-
         let file = File::open(&self.trace).unwrap();
         let schema = SchemaDescriptor::new(Arc::new(
             Type::group_type_builder("trace_schema")

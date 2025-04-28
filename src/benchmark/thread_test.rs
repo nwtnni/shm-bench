@@ -50,14 +50,9 @@ impl<B: Backend> benchmark::Benchmark<B> for ThreadTest {
 
     fn setup_global(
         &self,
-        config: &config::Process,
+        _config: &config::Process,
         _allocator: &allocator::Config<B::Config>,
     ) -> Self::StateGlobal {
-        assert_eq!(
-            self.iteration_count as usize % config.thread_count,
-            0,
-            "Object count should be multiple of total thread count"
-        );
     }
 
     fn setup_process(
