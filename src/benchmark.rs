@@ -8,6 +8,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use crate::Allocator as _;
+use crate::MemoryUsage;
 use crate::Observation;
 use crate::Output;
 use crate::OutputProcess;
@@ -155,6 +156,8 @@ pub fn run<B: Benchmark<A>, A: allocator::Backend>(
 
         let output_coordinator = coordinator.join().unwrap();
 
+        let memory = MemoryUsage::new(|mapping| backend.contains(mapping)).unwrap();
+
         let mut stdout = std::io::stdout().lock();
         serde_json::ser::to_writer(
             &mut stdout,
@@ -171,20 +174,19 @@ pub fn run<B: Benchmark<A>, A: allocator::Backend>(
                 output: Output {
                     process: OutputProcess {
                         id: config.process_id,
+                        memory,
                         output: serde_json::to_value(output_coordinator).unwrap(),
                         allocator: backend.report(),
                     },
                     thread: output_workers
                         .into_iter()
-                        .map(
-                            |(id, resource_usage, time, output, allocator)| OutputThread {
-                                id,
-                                resource_usage,
-                                time,
-                                output: serde_json::to_value(output).unwrap(),
-                                allocator,
-                            },
-                        )
+                        .map(|(id, resource, time, output, allocator)| OutputThread {
+                            id,
+                            resource,
+                            time,
+                            output: serde_json::to_value(output).unwrap(),
+                            allocator,
+                        })
                         .collect(),
                 },
             },

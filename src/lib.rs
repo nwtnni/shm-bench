@@ -20,6 +20,8 @@ use std::path::Path;
 use serde::Deserialize;
 use serde::Serialize;
 
+pub use smaps::Mapping;
+
 pub static PROCESS_ID: AtomicUsize = AtomicUsize::new(0);
 pub static PROCESS_COUNT: AtomicUsize = AtomicUsize::new(0);
 pub static THREAD_COUNT: AtomicUsize = AtomicUsize::new(0);
@@ -61,6 +63,8 @@ pub struct Output {
 pub struct OutputProcess {
     id: usize,
 
+    memory: MemoryUsage,
+
     #[serde(flatten)]
     output: serde_json::Value,
 
@@ -72,7 +76,7 @@ pub struct OutputProcess {
 pub struct OutputThread {
     id: usize,
 
-    resource_usage: ResourceUsage,
+    resource: ResourceUsage,
 
     time: u128,
 
@@ -191,5 +195,33 @@ impl ResourceUsage {
         let s = time.tv_sec as u128 * 10u128.pow(9);
         let us = time.tv_usec as u128 * 10u128.pow(6);
         s + us
+    }
+}
+
+#[derive(Clone, Default, Deserialize, Serialize)]
+pub struct MemoryUsage {
+    pss: u64,
+    pss_dirty: u64,
+    shared_clean: u64,
+    shared_dirty: u64,
+    private_clean: u64,
+    private_dirty: u64,
+}
+
+impl MemoryUsage {
+    pub fn new<F: Fn(&Mapping) -> bool>(filter: F) -> anyhow::Result<Self> {
+        let mut total = MemoryUsage::default();
+        smaps::read_filter(Path::new("/proc/self/smaps"), filter)?
+            .into_iter()
+            .for_each(|(_, usage)| {
+                total.pss += usage.pss as u64;
+                total.pss_dirty += usage.pss_dirty as u64;
+                total.shared_clean += usage.shared_clean as u64;
+                total.shared_dirty += usage.shared_dirty as u64;
+                total.private_clean += usage.private_clean as u64;
+                total.private_dirty += usage.private_dirty as u64;
+            });
+
+        Ok(total)
     }
 }

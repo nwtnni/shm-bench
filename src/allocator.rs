@@ -9,6 +9,8 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
+use crate::Mapping;
+
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]
 #[builder(state_mod(vis = "pub", name = "config"), derive(Clone, Debug))]
 pub struct Config<T> {
@@ -83,6 +85,8 @@ pub trait Backend: Sync + Sized {
     fn unlink(self) -> anyhow::Result<()>;
     fn allocator(&self, thread_id: usize) -> Self::Allocator;
 
+    fn contains(&self, mapping: &Mapping) -> bool;
+
     fn report(&self) -> serde_json::Value {
         serde_json::Value::Null
     }
@@ -132,51 +136,5 @@ impl Handle for *mut ffi::c_void {
 impl Handle for NonNull<ffi::c_void> {
     fn as_ptr(&self) -> *mut ffi::c_void {
         (*self).as_ptr()
-    }
-}
-
-/// For testing and debugging purposes.
-///
-/// Will not work across processes.
-pub struct Libc;
-
-impl Backend for Libc {
-    type Allocator = Self;
-    type Config = ();
-
-    fn new(_create: bool, _config: &Config<Self::Config>, _name: &str) -> anyhow::Result<Self> {
-        Ok(Self)
-    }
-
-    fn unlink(self) -> anyhow::Result<()> {
-        Ok(())
-    }
-
-    fn allocator(&self, _thread_id: usize) -> Self::Allocator {
-        Self
-    }
-}
-
-impl Allocator for Libc {
-    type Handle = NonNull<ffi::c_void>;
-
-    fn allocate(&mut self, size: usize) -> Option<Self::Handle> {
-        NonNull::new(unsafe { libc::malloc(size) })
-    }
-
-    unsafe fn deallocate(&mut self, handle: Self::Handle) {
-        unsafe { libc::free(handle.as_ptr()) }
-    }
-
-    unsafe fn handle_to_offset(&mut self, handle: &Self::Handle) -> NonZeroU64 {
-        NonZeroU64::new(handle.as_ptr() as u64).unwrap()
-    }
-
-    fn offset_to_handle(&mut self, offset: NonZeroU64) -> Self::Handle {
-        unsafe { NonNull::new_unchecked(offset.get() as *mut ffi::c_void) }
-    }
-
-    fn pointer_to_offset(&self, pointer: NonNull<ffi::c_void>) -> NonZeroU64 {
-        NonZeroU64::new(pointer.as_ptr() as u64).unwrap()
     }
 }

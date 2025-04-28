@@ -923,6 +923,7 @@ dependencies = [
  "serde",
  "serde_json",
  "shm",
+ "smaps",
  "ycsb",
 ]
 
@@ -931,6 +932,14 @@ name = "simdutf8"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3a9fe34e3e7a50316060351f37187a3f546bce95496156754b601a5fa71b76e"
+
+[[package]]
+name = "smaps"
+version = "0.1.0"
+source = "git+https://github.com/nwtnni/smaps.git#35b623829c930aa762c9b371251b65a76d6b3b3a"
+dependencies = [
+ "bitflags 2.9.0",
+]
 
 [[package]]
 name = "snap"
