@@ -156,11 +156,12 @@ pub fn run<B: Benchmark<A>, A: allocator::Backend>(
         let output_workers = workers
             .into_iter()
             .map(|handle| handle.join().unwrap())
-            .collect::<anyhow::Result<Vec<_>>>()?;
+            .collect::<anyhow::Result<Vec<_>>>()
+            .unwrap();
 
-        let output_coordinator = coordinator.join().unwrap()?;
+        let output_coordinator = coordinator.join().unwrap().unwrap();
 
-        let memory = measure::Memory::new(|mapping| backend.contains(mapping)).unwrap();
+        let memory = measure::Memory::new(|mapping| backend.contains(mapping))?;
 
         let mut stdout = std::io::stdout().lock();
         serde_json::ser::to_writer(
