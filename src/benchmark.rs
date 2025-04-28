@@ -3,6 +3,7 @@ use std::env;
 use std::thread;
 use std::time::Instant;
 
+use anyhow::Context as _;
 use serde::Deserialize;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -106,16 +107,17 @@ pub fn run<B: Benchmark<A>, A: allocator::Backend>(
 
                     let mut perf = perf_internal
                         .then(|| measure::Perf::new(core.id))
-                        .transpose()?;
+                        .transpose()
+                        .context("Initialize perf-event")?;
 
                     let mut allocator = backend.allocator(thread_id);
                     let mut worker =
                         benchmark.setup_worker(&config, global, process, &mut allocator);
 
                     let _ = barrier_thread.wait()?;
-                    let before = measure::Resource::new()?;
+                    let before = measure::Resource::new().context("Get resource usage")?;
                     if let Some(perf) = &mut perf {
-                        perf.start()?;
+                        perf.start().context("Start perf-event")?;
                     }
                     let start = Instant::now();
 
@@ -123,8 +125,12 @@ pub fn run<B: Benchmark<A>, A: allocator::Backend>(
                         benchmark.run_worker(&config, global, process, &mut worker, &mut allocator);
 
                     let time = start.elapsed().as_nanos();
-                    let report = perf.as_mut().map(|perf| perf.stop()).transpose()?;
-                    let after = measure::Resource::new()?;
+                    let report = perf
+                        .as_mut()
+                        .map(|perf| perf.stop())
+                        .transpose()
+                        .context("Stop perf-event")?;
+                    let after = measure::Resource::new().context("Get resource usage")?;
                     let _ = barrier_thread.wait()?;
 
                     let allocator = allocator.report();
@@ -161,7 +167,8 @@ pub fn run<B: Benchmark<A>, A: allocator::Backend>(
 
         let output_coordinator = coordinator.join().unwrap().unwrap();
 
-        let memory = measure::Memory::new(|mapping| backend.contains(mapping))?;
+        let memory = measure::Memory::new(|mapping| backend.contains(mapping))
+            .context("Get memory usage")?;
 
         let mut stdout = std::io::stdout().lock();
         serde_json::ser::to_writer(
