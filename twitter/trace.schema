@@ -1,0 +1,9 @@
+message trace_schema {
+    REQUIRED INT64 timestamp (UINT_64);
+    REQUIRED BYTE_ARRAY key (STRING);
+    REQUIRED INT64 key_size (UINT_64);
+    REQUIRED INT64 value_size (UINT_64);
+    REQUIRED INT64 client_id (UINT_64);
+    REQUIRED BYTE_ARRAY operation (STRING);
+    REQUIRED INT64 ttl (UINT_64);
+}
