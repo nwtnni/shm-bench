@@ -15,6 +15,7 @@ core_affinity = "0.8"
 libc = "0.2"
 log = "0.4"
 parquet = { version = "54.3", features = ["arrow"] }
+perf-event2 = "0.7"
 rand = "0.9"
 rapidhash = "1.4"
 serde = { version = "1.0", features = ["derive"] }

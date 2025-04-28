@@ -1,5 +1,5 @@
 mod memory;
-mod perf;
+pub(crate) mod perf;
 mod resource;
 
 pub(crate) use memory::Memory;

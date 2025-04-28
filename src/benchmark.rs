@@ -33,7 +33,7 @@ pub fn run<B: Benchmark<A>, A: allocator::Backend>(
     date: u128,
     config: &config::Process,
     allocator: &allocator::Config<A::Config>,
-) {
+) -> anyhow::Result<()> {
     crate::PROCESS_ID.store(config.process_id, Ordering::Relaxed);
     crate::PROCESS_COUNT.store(config.process_count, Ordering::Relaxed);
     crate::THREAD_COUNT.store(config.thread_count, Ordering::Relaxed);
@@ -46,28 +46,26 @@ pub fn run<B: Benchmark<A>, A: allocator::Backend>(
         .name("barrier-process".to_owned())
         .create(false)
         .thread_count(config.process_count as u32)
-        .build()
-        .unwrap();
+        .build()?;
 
     let mut barrier_thread = shm::Barrier::builder()
         .name("barrier-thread".to_owned())
         .create(false)
         .thread_count(thread_count as u32)
-        .build()
-        .unwrap();
+        .build()?;
 
     // Prevent race conditions between creating and opening shared memory data structures
     let (backend, global) = match config.is_leader() {
         true => {
-            let backend = A::new(true, allocator, B::NAME).unwrap();
+            let backend = A::new(true, allocator, B::NAME)?;
             let global = benchmark.setup_global(config, allocator);
-            let _ = barrier_process.wait().unwrap();
+            let _ = barrier_process.wait()?;
 
             (backend, global)
         }
         false => {
-            let _ = barrier_process.wait().unwrap();
-            let backend = A::new(false, allocator, B::NAME).unwrap();
+            let _ = barrier_process.wait()?;
+            let backend = A::new(false, allocator, B::NAME)?;
             let global = benchmark.setup_global(config, allocator);
 
             (backend, global)
@@ -78,16 +76,17 @@ pub fn run<B: Benchmark<A>, A: allocator::Backend>(
 
     let cores = &core_affinity::get_core_ids().unwrap_or_default();
 
-    let mut perf = match (
+    let mut perf_external = match (
         config.is_leader(),
         env::var("PERF_CTL_FIFO"),
         env::var("PERF_ACK_FIFO"),
     ) {
-        (true, Ok(ctl), Ok(ack)) => Some(measure::Perf::new(ctl, ack)),
+        (true, Ok(ctl), Ok(ack)) => Some(measure::perf::Sync::new(ctl, ack)?),
         _ => None,
     };
+    let perf_internal = perf_external.is_none();
 
-    thread::scope(|scope| {
+    thread::scope(|scope| -> anyhow::Result<_> {
         let workers = (config.process_id * config.thread_count_per_process()..)
             .take(config.thread_count_per_process())
             .map(|thread_id| {
@@ -95,64 +94,71 @@ pub fn run<B: Benchmark<A>, A: allocator::Backend>(
                 let backend = &backend;
                 let global = &global;
                 let process = &process;
-                let handle = scope.spawn(move || {
+                let handle = scope.spawn(move || -> anyhow::Result<_> {
                     crate::THREAD_ID.set(Some(thread_id));
 
                     let config = config::Thread {
                         process: *config,
                         thread_id,
                     };
-                    let core = thread_id % cores.len();
-                    assert!(core_affinity::set_for_current(cores[core]));
+                    let core = cores[thread_id % cores.len()];
+                    assert!(core_affinity::set_for_current(core));
+
+                    let mut perf = perf_internal
+                        .then(|| measure::Perf::new(core.id))
+                        .transpose()?;
 
                     let mut allocator = backend.allocator(thread_id);
                     let mut worker =
                         benchmark.setup_worker(&config, global, process, &mut allocator);
 
-                    let _ = barrier_thread.wait().unwrap();
-                    let before = measure::Resource::new().unwrap();
+                    let _ = barrier_thread.wait()?;
+                    let before = measure::Resource::new()?;
+                    if let Some(perf) = &mut perf {
+                        perf.start()?;
+                    }
                     let start = Instant::now();
 
                     let output =
                         benchmark.run_worker(&config, global, process, &mut worker, &mut allocator);
 
                     let time = start.elapsed().as_nanos();
-                    let after = measure::Resource::new().unwrap();
-                    let _ = barrier_thread.wait().unwrap();
+                    let report = perf.as_mut().map(|perf| perf.stop()).transpose()?;
+                    let after = measure::Resource::new()?;
+                    let _ = barrier_thread.wait()?;
 
                     let allocator = allocator.report();
 
-                    (thread_id, after - before, time, output, allocator)
+                    Ok((thread_id, time, after - before, report, output, allocator))
                 });
                 handle
             })
             .collect::<Vec<_>>();
 
-        let coordinator = scope.spawn(|| {
+        let coordinator = scope.spawn(|| -> anyhow::Result<_> {
             let mut coordinator = benchmark.setup_coordinator(config, &global, &process);
 
-            if let Some(perf) = &mut perf {
-                perf.enable();
+            if let Some(perf) = &mut perf_external {
+                perf.enable()?;
             }
 
-            let _ = barrier_thread.wait().unwrap();
+            let _ = barrier_thread.wait()?;
             let output = benchmark.run_coordinator(config, &global, &process, &mut coordinator);
-            let _ = barrier_thread.wait().unwrap();
+            let _ = barrier_thread.wait()?;
 
-            if let Some(perf) = &mut perf {
-                perf.disable();
+            if let Some(perf) = &mut perf_external {
+                perf.disable()?;
             }
 
-            output
+            Ok(output)
         });
 
         let output_workers = workers
             .into_iter()
-            .map(|handle| handle.join())
-            .collect::<Result<Vec<_>, _>>()
-            .unwrap();
+            .map(|handle| handle.join().unwrap())
+            .collect::<anyhow::Result<Vec<_>>>()?;
 
-        let output_coordinator = coordinator.join().unwrap();
+        let output_coordinator = coordinator.join().unwrap()?;
 
         let memory = measure::Memory::new(|mapping| backend.contains(mapping)).unwrap();
 
@@ -173,34 +179,40 @@ pub fn run<B: Benchmark<A>, A: allocator::Backend>(
                     process: OutputProcess {
                         id: config.process_id,
                         memory,
-                        output: serde_json::to_value(output_coordinator).unwrap(),
+                        output: serde_json::to_value(output_coordinator)?,
                         allocator: backend.report(),
                     },
                     thread: output_workers
                         .into_iter()
-                        .map(|(id, resource, time, output, allocator)| OutputThread {
-                            id,
-                            resource,
-                            time,
-                            output: serde_json::to_value(output).unwrap(),
-                            allocator,
-                        })
+                        .map(
+                            |(id, time, resource, perf, output, allocator)| OutputThread {
+                                id,
+                                time,
+                                resource,
+                                perf,
+                                output: serde_json::to_value(output).unwrap(),
+                                allocator,
+                            },
+                        )
                         .collect(),
                 },
             },
-        )
-        .unwrap();
-    });
+        )?;
+
+        Ok(())
+    })?;
 
     benchmark.teardown_process(config, &global, process);
 
     benchmark.teardown_global(config, global);
 
     if config.is_leader() {
-        barrier_thread.unlink().unwrap();
-        barrier_process.unlink().unwrap();
-        backend.unlink().unwrap();
+        barrier_thread.unlink()?;
+        barrier_process.unlink()?;
+        backend.unlink()?;
     }
+
+    Ok(())
 }
 
 pub trait Benchmark<B: Backend>: Sync + Serialize {

@@ -70,9 +70,12 @@ pub struct OutputProcess {
 pub struct OutputThread {
     id: usize,
 
+    time: u128,
+
     resource: measure::Resource,
 
-    time: u128,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    perf: Option<measure::perf::Report>,
 
     #[serde(flatten)]
     output: serde_json::Value,
