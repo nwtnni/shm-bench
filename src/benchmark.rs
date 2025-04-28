@@ -8,16 +8,14 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use crate::Allocator as _;
-use crate::MemoryUsage;
 use crate::Observation;
 use crate::Output;
 use crate::OutputProcess;
 use crate::OutputThread;
-use crate::Perf;
-use crate::ResourceUsage;
 use crate::allocator;
 use crate::allocator::Backend;
 use crate::config;
+use crate::measure;
 
 pub mod memcached;
 mod mstress;
@@ -85,7 +83,7 @@ pub fn run<B: Benchmark<A>, A: allocator::Backend>(
         env::var("PERF_CTL_FIFO"),
         env::var("PERF_ACK_FIFO"),
     ) {
-        (true, Ok(ctl), Ok(ack)) => Some(Perf::new(ctl, ack)),
+        (true, Ok(ctl), Ok(ack)) => Some(measure::Perf::new(ctl, ack)),
         _ => None,
     };
 
@@ -112,14 +110,14 @@ pub fn run<B: Benchmark<A>, A: allocator::Backend>(
                         benchmark.setup_worker(&config, global, process, &mut allocator);
 
                     let _ = barrier_thread.wait().unwrap();
-                    let before = ResourceUsage::new().unwrap();
+                    let before = measure::Resource::new().unwrap();
                     let start = Instant::now();
 
                     let output =
                         benchmark.run_worker(&config, global, process, &mut worker, &mut allocator);
 
                     let time = start.elapsed().as_nanos();
-                    let after = ResourceUsage::new().unwrap();
+                    let after = measure::Resource::new().unwrap();
                     let _ = barrier_thread.wait().unwrap();
 
                     let allocator = allocator.report();
@@ -156,7 +154,7 @@ pub fn run<B: Benchmark<A>, A: allocator::Backend>(
 
         let output_coordinator = coordinator.join().unwrap();
 
-        let memory = MemoryUsage::new(|mapping| backend.contains(mapping)).unwrap();
+        let memory = measure::Memory::new(|mapping| backend.contains(mapping)).unwrap();
 
         let mut stdout = std::io::stdout().lock();
         serde_json::ser::to_writer(
