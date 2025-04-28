@@ -9,14 +9,14 @@ validate = []
 
 [dependencies]
 anyhow = "1.0"
-arrow-array = "55.0"
+arrow-array = "54.3"
 bon = "3.6"
 core_affinity = "0.8"
 crossbeam-channel = "0.5"
 hdrhistogram = "7.5"
 libc = "0.2"
 log = "0.4"
-parquet = { version = "55.0", features = ["arrow"] }
+parquet = { version = "54.3", features = ["arrow"] }
 rand = "0.9"
 rapidhash = "1.4"
 serde = { version = "1.0", features = ["derive"] }
