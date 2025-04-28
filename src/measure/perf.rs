@@ -20,18 +20,17 @@ use serde::Serialize;
 pub(crate) struct Report {
     cpu_cycle_count: u64,
     instruction_count: u64,
-
-    l1d_rm: u64,
-    l1d_ra: u64,
-
-    l1d_wm: u64,
-    l1d_wa: u64,
-
-    ll_rm: u64,
-    ll_ra: u64,
-
-    ll_wm: u64,
-    ll_wa: u64,
+    // l1d_rm: u64,
+    // l1d_ra: u64,
+    //
+    // l1d_wm: u64,
+    // l1d_wa: u64,
+    //
+    // ll_rm: u64,
+    // ll_ra: u64,
+    //
+    // ll_wm: u64,
+    // ll_wa: u64,
 }
 
 pub(crate) struct Perf {
@@ -61,22 +60,22 @@ impl Perf {
                 .context("Perf add instructions")?,
         );
 
-        for which in [CacheId::L1D, CacheId::LL] {
-            for operation in [CacheOp::READ, CacheOp::WRITE] {
-                for result in [CacheResult::MISS, CacheResult::ACCESS] {
-                    let cache = Cache {
-                        which,
-                        operation,
-                        result,
-                    };
-                    counters.push(
-                        group
-                            .add(builder.event(cache.clone()))
-                            .with_context(|| anyhow!("Perf add cache: {:?}", cache))?,
-                    );
-                }
-            }
-        }
+        // for which in [CacheId::L1D, CacheId::LL] {
+        //     for operation in [CacheOp::READ, CacheOp::WRITE] {
+        //         for result in [CacheResult::MISS, CacheResult::ACCESS] {
+        //             let cache = Cache {
+        //                 which,
+        //                 operation,
+        //                 result,
+        //             };
+        //             counters.push(
+        //                 group
+        //                     .add(builder.event(cache.clone()))
+        //                     .with_context(|| anyhow!("Perf add cache: {:?}", cache))?,
+        //             );
+        //         }
+        //     }
+        // }
 
         Ok(Self { group, counters })
     }
@@ -99,18 +98,17 @@ impl Perf {
         Ok(Report {
             cpu_cycle_count: get(0),
             instruction_count: get(1),
-
-            l1d_rm: get(2),
-            l1d_ra: get(3),
-
-            l1d_wm: get(4),
-            l1d_wa: get(5),
-
-            ll_rm: get(6),
-            ll_ra: get(7),
-
-            ll_wm: get(8),
-            ll_wa: get(9),
+            // l1d_rm: get(2),
+            // l1d_ra: get(3),
+            //
+            // l1d_wm: get(4),
+            // l1d_wa: get(5),
+            //
+            // ll_rm: get(6),
+            // ll_ra: get(7),
+            //
+            // ll_wm: get(8),
+            // ll_wa: get(9),
         })
     }
 }
