@@ -1,6 +1,7 @@
 use core::sync::atomic::Ordering;
 use std::env;
 use std::thread;
+use std::time::Instant;
 
 use serde::Deserialize;
 use serde::Serialize;
@@ -175,13 +176,19 @@ pub trait Benchmark<B: Backend>: Sync + Serialize {
                             self.setup_worker(&config, global, process, &mut allocator);
 
                         let _ = barrier_thread.wait().unwrap();
+                        let before = ResourceUsage::new().unwrap();
+                        let start = Instant::now();
+
                         let output =
                             self.run_worker(&config, global, process, &mut worker, &mut allocator);
+
+                        let time = start.elapsed().as_nanos();
+                        let after = ResourceUsage::new().unwrap();
                         let _ = barrier_thread.wait().unwrap();
 
                         let allocator = allocator.report();
 
-                        (thread_id, output, allocator)
+                        (thread_id, after - before, time, output, allocator)
                     });
                     handle
                 })
@@ -194,17 +201,15 @@ pub trait Benchmark<B: Backend>: Sync + Serialize {
                     perf.enable();
                 }
 
-                let before = ResourceUsage::new().unwrap();
                 let _ = barrier_thread.wait().unwrap();
                 let output = self.run_coordinator(config, &global, &process, &mut coordinator);
                 let _ = barrier_thread.wait().unwrap();
-                let after = ResourceUsage::new().unwrap();
 
                 if let Some(perf) = &mut perf {
                     perf.disable();
                 }
 
-                (before, output, after)
+                output
             });
 
             let output_workers = workers
@@ -213,36 +218,42 @@ pub trait Benchmark<B: Backend>: Sync + Serialize {
                 .collect::<Result<Vec<_>, _>>()
                 .unwrap();
 
-            let (before, output_coordinator, after) = coordinator.join().unwrap();
+            let output_coordinator = coordinator.join().unwrap();
 
             let mut stdout = std::io::stdout().lock();
-            serde_json::ser::to_writer(&mut stdout, &Observation {
-                date,
-                cargo: crate::Cargo::default(),
-                r#global: config.global,
-                allocator: serde_json::to_value(allocator).unwrap(),
-                benchmark: serde_json::to_value(Named {
-                    name: Self::NAME,
-                    inner: self,
-                })
-                .unwrap(),
-                output: Output {
-                    process: OutputProcess {
-                        id: config.process_id,
-                        resource_usage: after - before,
-                        output: serde_json::to_value(output_coordinator).unwrap(),
-                        allocator: backend.report(),
+            serde_json::ser::to_writer(
+                &mut stdout,
+                &Observation {
+                    date,
+                    cargo: crate::Cargo::default(),
+                    r#global: config.global,
+                    allocator: serde_json::to_value(allocator).unwrap(),
+                    benchmark: serde_json::to_value(Named {
+                        name: Self::NAME,
+                        inner: self,
+                    })
+                    .unwrap(),
+                    output: Output {
+                        process: OutputProcess {
+                            id: config.process_id,
+                            output: serde_json::to_value(output_coordinator).unwrap(),
+                            allocator: backend.report(),
+                        },
+                        thread: output_workers
+                            .into_iter()
+                            .map(
+                                |(id, resource_usage, time, output, allocator)| OutputThread {
+                                    id,
+                                    resource_usage,
+                                    time,
+                                    output: serde_json::to_value(output).unwrap(),
+                                    allocator,
+                                },
+                            )
+                            .collect(),
                     },
-                    thread: output_workers
-                        .into_iter()
-                        .map(|(id, output, allocator)| OutputThread {
-                            id,
-                            output: serde_json::to_value(output).unwrap(),
-                            allocator,
-                        })
-                        .collect(),
                 },
-            })
+            )
             .unwrap();
         });
 

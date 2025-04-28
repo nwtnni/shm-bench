@@ -4,7 +4,6 @@ use core::num::NonZeroU64;
 use core::ptr::NonNull;
 use core::sync::atomic::AtomicU64;
 use core::sync::atomic::Ordering;
-use std::time::Instant;
 
 use bon::Builder;
 use rand::Rng as _;
@@ -26,9 +25,7 @@ const COOKIE: usize = 0xbf58476d1ce4e5b9;
 pub struct Mstress {}
 
 #[derive(Deserialize, Serialize)]
-pub struct OutputWorker {
-    time: u128,
-}
+pub struct OutputWorker {}
 
 impl<B: Backend> benchmark::Benchmark<B> for Mstress {
     const NAME: &str = "mstress";
@@ -99,7 +96,6 @@ impl<B: Backend> benchmark::Benchmark<B> for Mstress {
         let max_item_shift = 8;
         let max_item_retained_shift = max_item_shift + 2;
 
-        let start = Instant::now();
         while allocs > 0 || retain > 0 {
             if retain == 0 || rng.random_bool(0.5) {
                 allocs -= 1;
@@ -135,9 +131,7 @@ impl<B: Backend> benchmark::Benchmark<B> for Mstress {
             free(allocator, handle);
         }
 
-        OutputWorker {
-            time: start.elapsed().as_nanos(),
-        }
+        OutputWorker {}
     }
 }
 

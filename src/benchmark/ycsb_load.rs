@@ -1,5 +1,4 @@
 use core::ops::Deref;
-use std::time::Instant;
 
 use serde::Deserialize;
 use serde::Serialize;
@@ -29,7 +28,6 @@ unsafe impl<I> Sync for Global<I> {}
 
 #[derive(Deserialize, Serialize)]
 pub struct OutputWorker {
-    time: u128,
     operation_count: u64,
 }
 
@@ -101,11 +99,8 @@ impl<B: Backend, I: Index<B::Allocator>> benchmark::Benchmark<B> for index::Capt
         _worker: &mut Self::StateWorker,
         allocator: &mut B::Allocator,
     ) -> Self::OutputWorker {
-        let start = Instant::now();
         super::ycsb_run::load(&self.workload, config, allocator, &global.index);
-        let time = start.elapsed().as_nanos();
         OutputWorker {
-            time,
             operation_count: (self.workload.record_count / config.thread_count) as u64,
         }
     }

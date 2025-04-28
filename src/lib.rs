@@ -61,8 +61,6 @@ pub struct Output {
 pub struct OutputProcess {
     id: usize,
 
-    resource_usage: ResourceUsage,
-
     #[serde(flatten)]
     output: serde_json::Value,
 
@@ -73,6 +71,10 @@ pub struct OutputProcess {
 #[derive(Deserialize, Serialize)]
 pub struct OutputThread {
     id: usize,
+
+    resource_usage: ResourceUsage,
+
+    time: u128,
 
     #[serde(flatten)]
     output: serde_json::Value,
@@ -168,7 +170,7 @@ impl ResourceUsage {
     pub(crate) fn new() -> io::Result<Self> {
         let rusage = unsafe {
             let mut rusage = MaybeUninit::<libc::rusage>::zeroed();
-            match libc::getrusage(libc::RUSAGE_SELF, rusage.as_mut_ptr()) {
+            match libc::getrusage(libc::RUSAGE_THREAD, rusage.as_mut_ptr()) {
                 0 => rusage.assume_init(),
                 _ => return Err(io::Error::last_os_error()),
             }

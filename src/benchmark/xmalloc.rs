@@ -6,7 +6,6 @@ use core::num::NonZeroU64;
 use core::ptr;
 use core::sync::atomic::AtomicU64;
 use core::sync::atomic::Ordering;
-use std::time::Instant;
 
 use bon::Builder;
 use rand::RngCore as _;
@@ -76,7 +75,6 @@ pub struct Global {
 #[derive(Deserialize, Serialize)]
 pub struct OutputWorker {
     operation: Operation,
-    time: u128,
     operation_count: u64,
     size: u64,
 }
@@ -202,8 +200,6 @@ impl<B: Backend> benchmark::Benchmark<B> for Xmalloc {
         worker: &mut Self::StateWorker,
         allocator: &mut B::Allocator,
     ) -> Self::OutputWorker {
-        let start = Instant::now();
-
         // Allocator
         let (operation, operation_count, size_total) = if config.thread_id & 1 == 0 {
             let mut size_total = 0;
@@ -266,11 +262,8 @@ impl<B: Backend> benchmark::Benchmark<B> for Xmalloc {
             (Operation::Pop, operation_count, 0)
         };
 
-        let time = start.elapsed();
-
         OutputWorker {
             operation,
-            time: time.as_nanos(),
             // One operation per object, plus one for the batch container itself
             operation_count: operation_count * (self.batch_count + 1),
             size: size_total,

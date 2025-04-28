@@ -3,7 +3,6 @@ use core::cmp;
 use std::fs::File;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Instant;
 
 use arrow_array::cast::AsArray as _;
 use arrow_array::types::UInt64Type;
@@ -56,7 +55,6 @@ pub struct Worker {
 
 #[derive(Deserialize, Serialize)]
 pub struct OutputWorker {
-    time: u128,
     operation_count: u64,
 }
 
@@ -200,8 +198,6 @@ impl<B: Backend, I: Index<B::Allocator>> benchmark::Benchmark<B> for index::Capt
         worker: &mut Self::StateWorker,
         allocator: &mut B::Allocator,
     ) -> Self::OutputWorker {
-        let start = Instant::now();
-
         for batch in &mut worker.reader {
             let batch = batch.unwrap();
             for ((key, value_size), operation) in batch
@@ -264,7 +260,6 @@ impl<B: Backend, I: Index<B::Allocator>> benchmark::Benchmark<B> for index::Capt
         }
 
         OutputWorker {
-            time: start.elapsed().as_nanos(),
             operation_count: worker.operation_count,
         }
     }

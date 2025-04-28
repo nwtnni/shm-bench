@@ -1,7 +1,6 @@
 use core::mem;
 use core::sync::atomic::AtomicU8;
 use core::sync::atomic::Ordering;
-use std::time::Instant;
 
 use bon::Builder;
 use rand::SeedableRng;
@@ -34,9 +33,8 @@ pub struct Global<I> {
 unsafe impl<I> Sync for Global<I> {}
 
 #[derive(Deserialize, Serialize)]
-pub struct OutputThread {
+pub struct OutputWorker {
     operation_count: u64,
-    time: u128,
 }
 
 pub struct Worker {
@@ -51,7 +49,7 @@ impl<B: Backend, I: Index<B::Allocator>> benchmark::Benchmark<B> for index::Capt
     type StateCoordinator = ();
     type StateWorker = Worker;
 
-    type OutputWorker = OutputThread;
+    type OutputWorker = OutputWorker;
     type OutputCoordinator = ();
 
     fn setup_global(
@@ -127,7 +125,6 @@ impl<B: Backend, I: Index<B::Allocator>> benchmark::Benchmark<B> for index::Capt
             .workload
             .runner(unsafe { global.acked.address().as_ref() });
 
-        let start = Instant::now();
         let allow_null = self.workload.delete_proportion > 0.0;
 
         for _ in 0..worker.operation_count {
@@ -183,11 +180,9 @@ impl<B: Backend, I: Index<B::Allocator>> benchmark::Benchmark<B> for index::Capt
                 }
             }
         }
-        let time = start.elapsed();
 
-        OutputThread {
+        OutputWorker {
             operation_count: worker.operation_count,
-            time: time.as_nanos(),
         }
     }
 

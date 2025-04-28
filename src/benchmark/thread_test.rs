@@ -1,7 +1,6 @@
 // https://github.com/emeryberger/Hoard/blob/f021bdb810332c9c9f5a11ae5404aaa38fe129c0/benchmarks/threadtest/threadtest.cpp
 
 use core::cmp;
-use std::time::Instant;
 
 use bon::Builder;
 use serde::Deserialize;
@@ -28,7 +27,6 @@ pub struct ThreadTest {
 
 #[derive(Deserialize, Serialize)]
 pub struct OutputWorker {
-    time: u128,
     operation_count: u64,
     size: u64,
 }
@@ -100,8 +98,6 @@ impl<B: Backend> benchmark::Benchmark<B> for ThreadTest {
         worker: &mut Self::StateWorker,
         allocator: &mut B::Allocator,
     ) -> Self::OutputWorker {
-        let start = Instant::now();
-
         for _ in 0..worker.iteration_count {
             for handle in &mut worker.handles {
                 *handle = allocator.allocate(self.object_size);
@@ -123,10 +119,8 @@ impl<B: Backend> benchmark::Benchmark<B> for ThreadTest {
             }
         }
 
-        let time = start.elapsed().as_nanos();
         let operation_count = (worker.handles.len() * worker.iteration_count) as u64;
         OutputWorker {
-            time,
             operation_count,
             size: operation_count * self.object_size as u64,
         }
