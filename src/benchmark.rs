@@ -1,9 +1,13 @@
+use core::mem;
 use core::sync::atomic::Ordering;
 use std::env;
+use std::io;
 use std::thread;
 use std::time::Instant;
 
 use anyhow::Context as _;
+use anyhow::anyhow;
+use hwloc2::Topology;
 use serde::Deserialize;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -38,6 +42,17 @@ pub fn run<B: Benchmark<A>, A: allocator::Backend>(
     crate::PROCESS_ID.store(config.process_id, Ordering::Relaxed);
     crate::PROCESS_COUNT.store(config.process_count, Ordering::Relaxed);
     crate::THREAD_COUNT.store(config.thread_count, Ordering::Relaxed);
+
+    let topology = Topology::new().ok_or_else(|| anyhow!("Failed to retrieve hwloc2 topology"))?;
+
+    let depth = topology
+        .depth_for_type(&hwloc2::ObjectType::PU)
+        .map_err(|error| anyhow!("Failed to get processing unit depth: {:?}", error))?;
+    let cores = topology
+        .objects_at_depth(depth)
+        .into_iter()
+        .map(|core| core.os_index())
+        .collect::<Vec<_>>();
 
     let thread_count_per_process = config.thread_count_per_process() as u64 + 1;
     let thread_count = config.process_count as u64 * thread_count_per_process;
@@ -75,8 +90,6 @@ pub fn run<B: Benchmark<A>, A: allocator::Backend>(
 
     let process = benchmark.setup_process(config, allocator);
 
-    let cores = &core_affinity::get_core_ids().unwrap_or_default();
-
     let mut perf_external = match (
         config.is_leader(),
         env::var("PERF_CTL_FIFO"),
@@ -91,6 +104,7 @@ pub fn run<B: Benchmark<A>, A: allocator::Backend>(
         let workers = (config.process_id * config.thread_count_per_process()..)
             .take(config.thread_count_per_process())
             .map(|thread_id| {
+                let cores = &cores;
                 let barrier_thread = &barrier_thread;
                 let backend = &backend;
                 let global = &global;
@@ -103,10 +117,26 @@ pub fn run<B: Benchmark<A>, A: allocator::Backend>(
                         thread_id,
                     };
                     let core = cores[thread_id % cores.len()];
-                    assert!(core_affinity::set_for_current(core));
+
+                    let set = unsafe {
+                        // Seems like we should use `MaybeUninit<libc::cpu_set_t>`,
+                        // but `CPU_ZERO` macro takes `&mut`, not `*mut`.
+                        let mut set = mem::zeroed::<libc::cpu_set_t>();
+                        libc::CPU_ZERO(&mut set);
+                        libc::CPU_SET(core as usize, &mut set);
+                        set
+                    };
+
+                    // `hwloc2::Topology::set_cpubind_for_thread` takes `&mut self`,
+                    // so just call `sched_setaffinity` ourselves.
+                    if unsafe { libc::sched_setaffinity(0, libc::CPU_SETSIZE as usize, &set) } != 0
+                    {
+                        return Err(io::Error::last_os_error())
+                            .with_context(|| anyhow!("sched_setaffinity({})", core));
+                    }
 
                     let mut perf = perf_internal
-                        .then(|| measure::Perf::new(core.id))
+                        .then(|| measure::Perf::new(core as usize))
                         .transpose()
                         .context("Initialize perf-event")?;
 

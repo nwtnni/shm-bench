@@ -11,7 +11,7 @@ validate = []
 anyhow = "1.0"
 arrow-array = "54.3"
 bon = "3.6"
-core_affinity = "0.8"
+hwloc2 = "2.2"
 libc = "0.2"
 log = "0.4"
 parquet = { version = "54.3", features = ["arrow"] }
