@@ -99,7 +99,7 @@ pub fn run<B: Benchmark<A>, A: allocator::Backend>(
                     crate::THREAD_ID.set(Some(thread_id));
 
                     let config = config::Thread {
-                        process: *config,
+                        process: config.clone(),
                         thread_id,
                     };
                     let core = cores[thread_id % cores.len()];
@@ -176,7 +176,7 @@ pub fn run<B: Benchmark<A>, A: allocator::Backend>(
             &Observation {
                 date,
                 cargo: crate::Cargo::default(),
-                r#global: config.global,
+                r#global: config.global.clone(),
                 allocator: serde_json::to_value(allocator).unwrap(),
                 benchmark: serde_json::to_value(Named {
                     name: B::NAME,

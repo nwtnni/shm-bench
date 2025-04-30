@@ -1,10 +1,15 @@
 use core::ops::Deref;
 
+use bon::bon;
 use serde::Deserialize;
 use serde::Serialize;
+use shm::Numa;
 
-#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Global {
+    /// NUMA policy
+    pub numa: Option<Numa>,
+
     /// Number of processes
     pub process_count: usize,
 
@@ -12,35 +17,35 @@ pub struct Global {
     pub thread_count: usize,
 }
 
+#[bon]
 impl Global {
-    pub fn new(process_count: usize, thread_count: usize) -> Self {
-        assert_eq!(
-            thread_count % process_count,
-            0,
-            "thread count {} must be evenly divisible by process count {}",
-            thread_count,
-            process_count
-        );
-
-        Self {
-            process_count,
-            thread_count,
+    #[builder]
+    pub fn new(process_count: usize, thread_count: usize, numa: Option<Numa>) -> Option<Self> {
+        match thread_count % process_count {
+            0 => Some(Self {
+                process_count,
+                thread_count,
+                numa,
+            }),
+            _ => None,
         }
     }
+}
 
+impl Global {
     pub fn thread_count_per_process(&self) -> usize {
         self.thread_count / self.process_count
     }
 
     pub fn with_process_id(&self, process_id: usize) -> Process {
         Process {
-            global: *self,
+            global: self.clone(),
             process_id,
         }
     }
 }
 
-#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Process {
     #[serde(flatten)]
     pub global: Global,
@@ -62,7 +67,7 @@ impl Deref for Process {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct Thread {
     pub process: Process,
 
