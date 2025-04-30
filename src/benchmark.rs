@@ -127,6 +127,8 @@ pub fn run<B: Benchmark<A>, A: allocator::Backend>(
                         set
                     };
 
+                    log::debug!("Pin thread {} to core {}", thread_id, core);
+
                     // `hwloc2::Topology::set_cpubind_for_thread` takes `&mut self`,
                     // so just call `sched_setaffinity` ourselves.
                     if unsafe { libc::sched_setaffinity(0, libc::CPU_SETSIZE as usize, &set) } != 0
