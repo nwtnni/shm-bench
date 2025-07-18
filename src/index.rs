@@ -1,8 +1,6 @@
-mod linear_hash_map;
 mod linked_hash_map;
 
 use bon::Builder;
-pub use linear_hash_map::LinearHashMap;
 pub use linked_hash_map::LinkedHashMap;
 
 use core::marker::PhantomData;
