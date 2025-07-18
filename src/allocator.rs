@@ -94,6 +94,7 @@ pub trait Backend: Sync + Sized {
 
 pub trait Allocator: Sized {
     type Handle: Handle;
+
     fn allocate(&mut self, size: usize) -> Option<Self::Handle>;
 
     unsafe fn link(&mut self, pointer: *mut u64, pointee: &Self::Handle) {

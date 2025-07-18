@@ -21,6 +21,7 @@ use crate::allocator::Backend;
 use crate::allocator::Handle;
 use crate::benchmark;
 use crate::config;
+use crate::measure;
 
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]
 pub struct Xmalloc {
@@ -175,7 +176,7 @@ impl<B: Backend> benchmark::Benchmark<B> for Xmalloc {
         config: &config::Thread,
         _global: &Self::StateGlobal,
         (): &Self::StateProcess,
-        _allocator: &mut B::Allocator,
+        _allocator: &mut measure::time::Allocator<<B as allocator::Backend>::Allocator>,
     ) -> Self::StateWorker {
         Worker {
             rng: SmallRng::seed_from_u64(config.thread_id as u64),
@@ -198,7 +199,7 @@ impl<B: Backend> benchmark::Benchmark<B> for Xmalloc {
         global: &Self::StateGlobal,
         (): &Self::StateProcess,
         worker: &mut Self::StateWorker,
-        allocator: &mut B::Allocator,
+        allocator: &mut measure::time::Allocator<<B as allocator::Backend>::Allocator>,
     ) -> Self::OutputWorker {
         // Allocator
         let (operation, operation_count, size_total) = if config.thread_id & 1 == 0 {

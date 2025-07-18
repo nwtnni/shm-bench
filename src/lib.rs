@@ -70,7 +70,7 @@ pub struct OutputProcess {
 pub struct OutputThread {
     id: usize,
 
-    time: u128,
+    time: measure::time::Report,
 
     resource: measure::Resource,
 

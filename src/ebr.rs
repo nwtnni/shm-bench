@@ -14,6 +14,7 @@ use core::sync::atomic::Ordering;
 
 use crate::Allocator;
 use crate::allocator::Handle as _;
+use crate::measure;
 
 pub struct Global<A> {
     thread_count: usize,
@@ -33,6 +34,8 @@ impl<A: Allocator> Global<A> {
     }
 
     pub unsafe fn start(&self, thread_id: usize, allocator: &mut A) {
+        let _timer = measure::time::Timer::start(&measure::time::EBR);
+
         let local = unsafe { self.local[thread_id].get().as_mut().unwrap() };
 
         if self.try_pass(thread_id) {
@@ -43,6 +46,8 @@ impl<A: Allocator> Global<A> {
     }
 
     pub unsafe fn retire(&self, thread_id: usize, allocator: &mut A, offset: NonZeroU64) {
+        let _timer = measure::time::Timer::start(&measure::time::EBR);
+
         let local = unsafe { self.local[thread_id].get().as_mut().unwrap() };
         local.push(allocator, offset);
     }

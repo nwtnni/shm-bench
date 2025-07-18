@@ -14,6 +14,7 @@ use crate::Allocator;
 use crate::Index;
 use crate::allocator::Handle as _;
 use crate::ebr;
+use crate::measure;
 
 /// Separate chaining hashmap
 ///
@@ -67,6 +68,8 @@ impl<A: Allocator> Index<A> for LinkedHashMap<A> {
         size: usize,
         with: F,
     ) {
+        let _timer = measure::time::Timer::start(&measure::time::INDEX);
+
         let bucket = self.bucket(key);
 
         // Initialize value
@@ -165,6 +168,8 @@ impl<A: Allocator> Index<A> for LinkedHashMap<A> {
         key: &[u8],
         with: F,
     ) -> bool {
+        let _timer = measure::time::Timer::start(&measure::time::INDEX);
+
         unsafe {
             self.ebr().start(thread_id, allocator);
         }

@@ -9,6 +9,7 @@ use crate::allocator::Backend;
 use crate::benchmark;
 use crate::config;
 use crate::index;
+use crate::measure;
 
 #[derive(Serialize)]
 pub struct Config(pub super::ycsb_run::Config);
@@ -31,7 +32,9 @@ pub struct OutputWorker {
     operation_count: u64,
 }
 
-impl<B: Backend, I: Index<B::Allocator>> benchmark::Benchmark<B> for index::Capture<Config, I> {
+impl<B: Backend, I: Index<measure::time::Allocator<B::Allocator>>> benchmark::Benchmark<B>
+    for index::Capture<Config, I>
+{
     const NAME: &str = "ycsb-load";
     type StateGlobal = Global<I>;
     type StateProcess = ();
@@ -78,7 +81,7 @@ impl<B: Backend, I: Index<B::Allocator>> benchmark::Benchmark<B> for index::Capt
         _config: &config::Thread,
         _global: &Self::StateGlobal,
         (): &Self::StateProcess,
-        _allocator: &mut B::Allocator,
+        _allocator: &mut measure::time::Allocator<<B as allocator::Backend>::Allocator>,
     ) -> Self::StateWorker {
     }
 
@@ -97,7 +100,7 @@ impl<B: Backend, I: Index<B::Allocator>> benchmark::Benchmark<B> for index::Capt
         global: &Self::StateGlobal,
         (): &Self::StateProcess,
         _worker: &mut Self::StateWorker,
-        allocator: &mut B::Allocator,
+        allocator: &mut measure::time::Allocator<<B as allocator::Backend>::Allocator>,
     ) -> Self::OutputWorker {
         super::ycsb_run::load(&self.workload, config, allocator, &global.index);
         OutputWorker {

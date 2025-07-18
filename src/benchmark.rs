@@ -3,7 +3,6 @@ use core::sync::atomic::Ordering;
 use std::env;
 use std::io;
 use std::thread;
-use std::time::Instant;
 
 use anyhow::Context as _;
 use anyhow::anyhow;
@@ -142,7 +141,7 @@ pub fn run<B: Benchmark<A>, A: allocator::Backend>(
                         .transpose()
                         .context("Initialize perf-event")?;
 
-                    let mut allocator = backend.allocator(thread_id);
+                    let mut allocator = measure::time::Allocator::new(backend.allocator(thread_id));
                     let mut worker =
                         benchmark.setup_worker(&config, global, process, &mut allocator);
 
@@ -151,12 +150,12 @@ pub fn run<B: Benchmark<A>, A: allocator::Backend>(
                     if let Some(perf) = &mut perf {
                         perf.start().context("Start perf-event")?;
                     }
-                    let start = Instant::now();
 
+                    let timer = measure::time::Timer::start(&measure::time::BENCHMARK);
                     let output =
                         benchmark.run_worker(&config, global, process, &mut worker, &mut allocator);
+                    drop(timer);
 
-                    let time = start.elapsed().as_nanos();
                     let report = perf
                         .as_mut()
                         .map(|perf| perf.stop())
@@ -167,7 +166,14 @@ pub fn run<B: Benchmark<A>, A: allocator::Backend>(
 
                     let allocator = allocator.report();
 
-                    Ok((thread_id, time, after - before, report, output, allocator))
+                    Ok((
+                        thread_id,
+                        measure::time::report(),
+                        after - before,
+                        report,
+                        output,
+                        allocator,
+                    ))
                 });
                 handle
             })
@@ -290,7 +296,7 @@ pub trait Benchmark<B: Backend>: Sync + Serialize {
         config: &config::Thread,
         global: &Self::StateGlobal,
         process: &Self::StateProcess,
-        allocator: &mut B::Allocator,
+        allocator: &mut measure::time::Allocator<B::Allocator>,
     ) -> Self::StateWorker;
 
     fn run_coordinator(
@@ -307,7 +313,7 @@ pub trait Benchmark<B: Backend>: Sync + Serialize {
         global: &Self::StateGlobal,
         process: &Self::StateProcess,
         worker: &mut Self::StateWorker,
-        allocator: &mut B::Allocator,
+        allocator: &mut measure::time::Allocator<B::Allocator>,
     ) -> Self::OutputWorker;
 
     fn teardown_process(
