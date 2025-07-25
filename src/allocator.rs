@@ -76,6 +76,13 @@ pub enum Coherence {
     Mcas,
 }
 
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Memory {
+    Hwcc,
+    Swcc,
+}
+
 pub trait Backend: Sync + Sized {
     type Allocator: Allocator;
     type Config: DeserializeOwned + Serialize;
@@ -85,7 +92,7 @@ pub trait Backend: Sync + Sized {
     fn unlink(self) -> anyhow::Result<()>;
     fn allocator(&self, thread_id: usize) -> Self::Allocator;
 
-    fn contains(&self, mapping: &Mapping) -> bool;
+    fn categorize(&self, mapping: &Mapping) -> Option<Memory>;
 
     fn report(&self) -> serde_json::Value {
         serde_json::Value::Null

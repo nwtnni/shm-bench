@@ -1026,7 +1026,7 @@ checksum = "e3a9fe34e3e7a50316060351f37187a3f546bce95496156754b601a5fa71b76e"
 [[package]]
 name = "smaps"
 version = "0.1.0"
-source = "git+https://github.com/nwtnni/smaps.git#155f57c1b1bfcf9c677392426b5c658e412d0499"
+source = "git+https://github.com/nwtnni/smaps.git#a135c9f9fb690c857dec378149cc85792cb1df44"
 dependencies = [
  "bitflags 2.9.0",
 ]

@@ -205,7 +205,7 @@ pub fn run<B: Benchmark<A>, A: allocator::Backend>(
 
         let output_coordinator = coordinator.join().unwrap().unwrap();
 
-        let memory = measure::Memory::new(|mapping| backend.contains(mapping))
+        let memory = measure::memory::Total::new(|mapping| backend.categorize(mapping))
             .context("Get memory usage")?;
 
         let mut stdout = std::io::stdout().lock();

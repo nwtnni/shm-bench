@@ -57,7 +57,7 @@ pub struct Output {
 pub struct OutputProcess {
     id: usize,
 
-    memory: measure::Memory,
+    memory: measure::memory::Total,
 
     #[serde(flatten)]
     output: serde_json::Value,
