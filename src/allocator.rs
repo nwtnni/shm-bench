@@ -104,6 +104,7 @@ pub trait Allocator: Sized {
 
     fn allocate(&mut self, size: usize) -> Option<Self::Handle>;
 
+    #[inline]
     unsafe fn link(&mut self, pointer: *mut u64, pointee: &Self::Handle) {
         unsafe {
             let offset = self.handle_to_offset(pointee);
@@ -111,6 +112,7 @@ pub trait Allocator: Sized {
         }
     }
 
+    #[inline]
     unsafe fn unlink(&mut self, pointer: *mut u64) {
         let offset = unsafe { AtomicU64::from_ptr(pointer) }.load(Ordering::Relaxed);
         let Some(offset) = NonZeroU64::new(offset) else {

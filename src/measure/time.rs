@@ -79,6 +79,7 @@ impl<B: crate::allocator::Backend> crate::allocator::Backend for Backend<B> {
 
     type Config = B::Config;
 
+    #[inline]
     fn new(
         create: bool,
         config: &crate::allocator::Config<Self::Config>,
@@ -87,14 +88,17 @@ impl<B: crate::allocator::Backend> crate::allocator::Backend for Backend<B> {
         B::new(create, config, name).map(Self)
     }
 
+    #[inline]
     fn unlink(self) -> anyhow::Result<()> {
         self.0.unlink()
     }
 
+    #[inline]
     fn allocator(&self, thread_id: usize) -> Self::Allocator {
         Allocator(self.0.allocator(thread_id))
     }
 
+    #[inline]
     fn categorize(&self, mapping: &smaps::Mapping) -> Option<crate::allocator::Memory> {
         self.0.categorize(mapping)
     }

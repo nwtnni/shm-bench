@@ -70,6 +70,10 @@ impl<A: Allocator> Index<A> for LinkedHashMap<A> {
     ) {
         let _timer = measure::time::Timer::start(&measure::time::INDEX);
 
+        unsafe {
+            self.ebr().start(thread_id, allocator);
+        }
+
         let bucket = self.bucket(key);
 
         // Initialize value
