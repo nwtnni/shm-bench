@@ -12,7 +12,6 @@ use crate::allocator::Backend;
 use crate::allocator::Handle as _;
 use crate::benchmark;
 use crate::config;
-use crate::measure;
 
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]
 pub struct ThreadTest {
@@ -74,7 +73,7 @@ impl<B: Backend> benchmark::Benchmark<B> for ThreadTest {
         config: &config::Thread,
         (): &Self::StateGlobal,
         (): &Self::StateProcess,
-        _allocator: &mut measure::time::Allocator<<B as allocator::Backend>::Allocator>,
+        _allocator: &mut <B as allocator::Backend>::Allocator,
     ) -> Self::StateWorker {
         Worker {
             iteration_count: self.iteration_count as usize / config.thread_count,
@@ -97,7 +96,7 @@ impl<B: Backend> benchmark::Benchmark<B> for ThreadTest {
         _: &Self::StateGlobal,
         (): &Self::StateProcess,
         worker: &mut Self::StateWorker,
-        allocator: &mut measure::time::Allocator<<B as allocator::Backend>::Allocator>,
+        allocator: &mut <B as allocator::Backend>::Allocator,
     ) -> Self::OutputWorker {
         for _ in 0..worker.iteration_count {
             for handle in &mut worker.handles {

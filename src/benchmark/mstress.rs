@@ -18,7 +18,6 @@ use crate::allocator::Backend;
 use crate::allocator::Handle as _;
 use crate::benchmark;
 use crate::config;
-use crate::measure;
 
 const COOKIE: usize = 0xbf58476d1ce4e5b9;
 
@@ -65,7 +64,7 @@ impl<B: Backend> benchmark::Benchmark<B> for Mstress {
         _config: &config::Thread,
         (): &Self::StateGlobal,
         (): &Self::StateProcess,
-        _allocator: &mut measure::time::Allocator<<B as allocator::Backend>::Allocator>,
+        _allocator: &mut <B as allocator::Backend>::Allocator,
     ) -> Self::StateWorker {
     }
 
@@ -84,7 +83,7 @@ impl<B: Backend> benchmark::Benchmark<B> for Mstress {
         (): &Self::StateGlobal,
         (): &Self::StateProcess,
         (): &mut Self::StateWorker,
-        allocator: &mut measure::time::Allocator<<B as allocator::Backend>::Allocator>,
+        allocator: &mut <B as allocator::Backend>::Allocator,
     ) -> Self::OutputWorker {
         let mut allocs = 100 * 50;
         let mut retain = allocs / 2;

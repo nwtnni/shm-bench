@@ -3,7 +3,7 @@ pub mod benchmark;
 pub mod config;
 mod ebr;
 pub mod index;
-mod measure;
+pub mod measure;
 
 pub use allocator::Allocator;
 pub use index::Index;

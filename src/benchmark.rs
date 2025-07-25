@@ -141,7 +141,7 @@ pub fn run<B: Benchmark<A>, A: allocator::Backend>(
                         .transpose()
                         .context("Initialize perf-event")?;
 
-                    let mut allocator = measure::time::Allocator::new(backend.allocator(thread_id));
+                    let mut allocator = backend.allocator(thread_id);
                     let mut worker =
                         benchmark.setup_worker(&config, global, process, &mut allocator);
 
@@ -296,7 +296,7 @@ pub trait Benchmark<B: Backend>: Sync + Serialize {
         config: &config::Thread,
         global: &Self::StateGlobal,
         process: &Self::StateProcess,
-        allocator: &mut measure::time::Allocator<B::Allocator>,
+        allocator: &mut B::Allocator,
     ) -> Self::StateWorker;
 
     fn run_coordinator(
@@ -313,7 +313,7 @@ pub trait Benchmark<B: Backend>: Sync + Serialize {
         global: &Self::StateGlobal,
         process: &Self::StateProcess,
         worker: &mut Self::StateWorker,
-        allocator: &mut measure::time::Allocator<B::Allocator>,
+        allocator: &mut B::Allocator,
     ) -> Self::OutputWorker;
 
     fn teardown_process(

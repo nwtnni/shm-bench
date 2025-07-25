@@ -24,7 +24,6 @@ use crate::allocator::Backend;
 use crate::benchmark;
 use crate::config;
 use crate::index;
-use crate::measure;
 
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]
 pub struct Config {
@@ -59,9 +58,7 @@ pub struct OutputWorker {
     operation_count: u64,
 }
 
-impl<B: Backend, I: Index<measure::time::Allocator<B::Allocator>>> benchmark::Benchmark<B>
-    for index::Capture<Config, I>
-{
+impl<B: Backend, I: Index<B::Allocator>> benchmark::Benchmark<B> for index::Capture<Config, I> {
     const NAME: &str = "memcached";
     type StateGlobal = Global<I>;
     type StateProcess = ();
@@ -166,7 +163,7 @@ impl<B: Backend, I: Index<measure::time::Allocator<B::Allocator>>> benchmark::Be
         config: &config::Thread,
         global: &Self::StateGlobal,
         (): &Self::StateProcess,
-        _allocator: &mut measure::time::Allocator<B::Allocator>,
+        _allocator: &mut B::Allocator,
     ) -> Self::StateWorker {
         let limit = self.operation_count as usize / config.thread_count;
         let offset = limit * config.thread_id;
@@ -199,7 +196,7 @@ impl<B: Backend, I: Index<measure::time::Allocator<B::Allocator>>> benchmark::Be
         global: &Self::StateGlobal,
         (): &Self::StateProcess,
         worker: &mut Self::StateWorker,
-        allocator: &mut measure::time::Allocator<B::Allocator>,
+        allocator: &mut B::Allocator,
     ) -> Self::OutputWorker {
         for batch in &mut worker.reader {
             let batch = batch.unwrap();

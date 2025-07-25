@@ -66,13 +66,41 @@ impl Count {
     }
 }
 
-pub struct Allocator<A>(A);
+pub struct Backend<B>(B);
 
-impl<A> Allocator<A> {
-    pub(crate) fn new(allocator: A) -> Self {
-        Self(allocator)
+impl<B> Backend<B> {
+    pub fn new(backend: B) -> Self {
+        Self(backend)
     }
 }
+
+impl<B: crate::allocator::Backend> crate::allocator::Backend for Backend<B> {
+    type Allocator = Allocator<B::Allocator>;
+
+    type Config = B::Config;
+
+    fn new(
+        create: bool,
+        config: &crate::allocator::Config<Self::Config>,
+        name: &str,
+    ) -> anyhow::Result<Self> {
+        B::new(create, config, name).map(Self)
+    }
+
+    fn unlink(self) -> anyhow::Result<()> {
+        self.0.unlink()
+    }
+
+    fn allocator(&self, thread_id: usize) -> Self::Allocator {
+        Allocator(self.0.allocator(thread_id))
+    }
+
+    fn categorize(&self, mapping: &smaps::Mapping) -> Option<crate::allocator::Memory> {
+        self.0.categorize(mapping)
+    }
+}
+
+pub struct Allocator<A>(A);
 
 impl<A: crate::allocator::Allocator> crate::allocator::Allocator for Allocator<A> {
     type Handle = A::Handle;
