@@ -3,13 +3,11 @@ use core::ffi;
 use core::num::NonZeroU64;
 use core::ptr::NonNull;
 use std::thread::LocalKey;
-use std::time::Instant;
 
 use serde::Deserialize;
 use serde::Serialize;
 
 thread_local! {
-    pub(crate) static BENCHMARK: Count = const { Count::new() };
     pub(crate) static INDEX: Count = const { Count::new() };
     pub(crate) static ALLOCATOR: Count = const { Count::new() };
     pub(crate) static EBR: Count = const { Count::new() };
@@ -17,7 +15,7 @@ thread_local! {
 
 #[derive(Serialize, Deserialize)]
 pub struct Report {
-    benchmark: u64,
+    pub(crate) total: u64,
     index: u64,
     allocator: u64,
     ebr: u64,
@@ -25,7 +23,7 @@ pub struct Report {
 
 pub fn report() -> Report {
     Report {
-        benchmark: BENCHMARK.with(Count::get),
+        total: 0,
         index: INDEX.with(Count::get),
         allocator: ALLOCATOR.with(Count::get),
         ebr: EBR.with(Count::get),
@@ -33,18 +31,30 @@ pub fn report() -> Report {
 }
 
 pub struct Timer {
-    start: Instant,
+    #[cfg(feature = "measure-time")]
+    start: std::time::Instant,
+    #[cfg(feature = "measure-time")]
     count: &'static LocalKey<Count>,
 }
 
 impl Timer {
     #[inline]
-    pub(crate) fn start(count: &'static LocalKey<Count>) -> Self {
-        let start = Instant::now();
-        Self { start, count }
+    pub(crate) fn start(_count: &'static LocalKey<Count>) -> Self {
+        #[cfg(feature = "measure-time")]
+        {
+            let start = std::time::Instant::now();
+            Self {
+                start,
+                count: _count,
+            }
+        }
+
+        #[cfg(not(feature = "measure-time"))]
+        Self {}
     }
 }
 
+#[cfg(feature = "measure-time")]
 impl Drop for Timer {
     #[inline]
     fn drop(&mut self) {

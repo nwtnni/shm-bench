@@ -3,6 +3,7 @@ use core::sync::atomic::Ordering;
 use std::env;
 use std::io;
 use std::thread;
+use std::time::Instant;
 
 use anyhow::Context as _;
 use anyhow::anyhow;
@@ -151,10 +152,10 @@ pub fn run<B: Benchmark<A>, A: allocator::Backend>(
                         perf.start().context("Start perf-event")?;
                     }
 
-                    let timer = measure::time::Timer::start(&measure::time::BENCHMARK);
+                    let start = Instant::now();
                     let output =
                         benchmark.run_worker(&config, global, process, &mut worker, &mut allocator);
-                    drop(timer);
+                    let total = start.elapsed();
 
                     let report = perf
                         .as_mut()
@@ -166,14 +167,10 @@ pub fn run<B: Benchmark<A>, A: allocator::Backend>(
 
                     let allocator = allocator.report();
 
-                    Ok((
-                        thread_id,
-                        measure::time::report(),
-                        after - before,
-                        report,
-                        output,
-                        allocator,
-                    ))
+                    let mut time = measure::time::report();
+                    time.total = total.as_nanos() as u64;
+
+                    Ok((thread_id, time, after - before, report, output, allocator))
                 });
                 handle
             })
